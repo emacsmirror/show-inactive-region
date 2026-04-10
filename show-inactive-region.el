@@ -242,6 +242,12 @@ STEP-INTERVAL is the precomputed time between steps."
         (show-inactive-region--fade-start)
         (move-overlay show-inactive-region--overlay pt mark-pos)))))))
 
+(defun show-inactive-region--overlay-clear-and-cancel ()
+  "Remove the overlay and cancel fade, used before local variables are killed."
+  (show-inactive-region--fade-cancel)
+  (when show-inactive-region--overlay
+    (delete-overlay show-inactive-region--overlay)))
+
 (defun show-inactive-region--turn-on ()
   "Enable inactive region highlighting in the current buffer."
   ;; Clear first to ensure not stale, then create.
@@ -250,16 +256,17 @@ STEP-INTERVAL is the precomputed time between steps."
   (setq show-inactive-region--overlay (make-overlay (point-min) (point-min)))
   (when show-inactive-region-overlay-priority
     (overlay-put show-inactive-region--overlay 'priority show-inactive-region-overlay-priority))
-  (add-hook 'post-command-hook #'show-inactive-region--overlay-update nil t))
+  (add-hook 'post-command-hook #'show-inactive-region--overlay-update nil t)
+  ;; Clean up before `kill-all-local-variables' (e.g. on `revert-buffer'),
+  ;; otherwise the overlay is orphaned because the buffer-local reference is lost.
+  (add-hook 'change-major-mode-hook #'show-inactive-region--overlay-clear-and-cancel nil t))
 
 (defun show-inactive-region--turn-off ()
   "Disable inactive region highlighting in the current buffer."
-  (show-inactive-region--fade-cancel)
-  ;; Guard needed: `delete-overlay' errors on nil.
-  (when show-inactive-region--overlay
-    (delete-overlay show-inactive-region--overlay))
+  (show-inactive-region--overlay-clear-and-cancel)
   (show-inactive-region--locals-clear)
-  (remove-hook 'post-command-hook #'show-inactive-region--overlay-update t))
+  (remove-hook 'post-command-hook #'show-inactive-region--overlay-update t)
+  (remove-hook 'change-major-mode-hook #'show-inactive-region--overlay-clear-and-cancel t))
 
 ;; ---------------------------------------------------------------------------
 ;; Public Functions
