@@ -253,7 +253,11 @@ STEP-INTERVAL is the precomputed time between steps."
   ;; Clear first to ensure not stale, then create.
   (show-inactive-region--locals-clear)
   (show-inactive-region--locals-create)
-  (setq show-inactive-region--overlay (make-overlay (point-min) (point-min)))
+  (cond
+   (show-inactive-region--overlay
+    (move-overlay show-inactive-region--overlay (point-min) (point-min) (current-buffer)))
+   (t
+    (setq show-inactive-region--overlay (make-overlay (point-min) (point-min)))))
   (when show-inactive-region-overlay-priority
     (overlay-put show-inactive-region--overlay 'priority show-inactive-region-overlay-priority))
   (add-hook 'post-command-hook #'show-inactive-region--overlay-update nil t)
